@@ -1,11 +1,6 @@
 pipeline {
   agent any
 
-  environment {
-    // Inject DockerHub credentials
-    DOCKER_HUB_CREDENTIALS = credentials('dockerhub-username-id')
-  }
-
   stages {
     stage('Checkout') {
       steps {
@@ -21,9 +16,12 @@ pipeline {
 
     stage('Build & Push Docker Image') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub-username-id', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-username-id',  // Your Jenkins credential ID
+          usernameVariable: 'mishraankit062',
+          passwordVariable: 'Ankit@1212')]) {
+          
           script {
-            // Pass BRANCH_NAME environment variable explicitly to build.sh
             sh """
               export BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
               ./build.sh
@@ -35,7 +33,8 @@ pipeline {
 
     stage('Deploy Application') {
       steps {
-        dir("${env.WORKSPACE}") {  // ensure working dir is repo root where docker-compose.yml exists
+        // Run deploy.sh in the workspace directory (where docker-compose.yml exists)
+        dir("${env.WORKSPACE}") {
           sh './deploy.sh'
         }
       }
