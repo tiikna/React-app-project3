@@ -15,11 +15,13 @@ pipeline {
       }
     }
     stage('Install and Build React App') {
-      steps {
-        sh 'npm install'
-        sh 'npm run build'
-      }
+  steps {
+    dir('React-app-3') { 
+      sh 'npm install'
+      sh 'npm run build'
     }
+  }
+}
     stage('Build & Push Docker Image') {
       steps {
         withCredentials([usernamePassword(
