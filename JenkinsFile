@@ -7,7 +7,11 @@ pipeline {
         checkout scm
       }
     }
-
+    stage('Prepare Scripts') {
+      steps {
+        sh 'chmod +x build.sh deploy.sh'
+      }
+    }
     stage('Build & Push Docker Image') {
       steps {
         withCredentials([usernamePassword(credentialsId: 'dockerhub-username-id', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
