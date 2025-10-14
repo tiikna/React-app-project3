@@ -1,33 +1,29 @@
 pipeline {
-  agent any
-  environment {
-    DOCKER_HUB_USERNAME = credentials('dockerhub-username-id') // Jenkins stored username credential
-    DOCKER_HUB_PASSWORD = credentials('dockerhub-password-id') // Jenkins stored password/token credential
-  }
+  agent any{}
+
   stages {
     stage('Checkout') {
       steps {
         checkout scm
       }
     }
+
     stage('Build & Push Docker Image') {
       steps {
-        // Pass environment variables expected by build.sh
-        withEnv([
-          "DOCKER_HUB_USERNAME=${env.DOCKER_HUB_USERNAME}",
-          "DOCKER_HUB_PASSWORD=${env.DOCKER_HUB_PASSWORD}"
-        ]) {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-username-id', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
           sh './build.sh'
         }
       }
     }
+
     stage('Deploy Application') {
       steps {
         sh './deploy.sh'
       }
     }
   }
+
   triggers {
-    githubPush()  // GitHub webhook triggers build on push for both dev and master
+    githubPush()
   }
 }
