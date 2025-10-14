@@ -1,46 +1,34 @@
 pipeline {
   agent any
-
   stages {
     stage('Checkout') {
       steps {
         checkout scm
       }
     }
-
     stage('Prepare Scripts') {
       steps {
         sh 'chmod +x build.sh deploy.sh'
       }
     }
-
     stage('Build & Push Docker Image') {
       steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'dockerhub-username-id',  // Your Jenkins credential ID
-          usernameVariable: 'mishraankit062',
-          passwordVariable: 'Ankit@1212')]) {
-          
-          script {
-            sh """
-              export BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
-              ./build.sh
-            """
-          }
+        script {
+          sh """
+            export BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
+            ./build.sh
+          """
         }
       }
     }
-
     stage('Deploy Application') {
       steps {
-        // Run deploy.sh in the workspace directory (where docker-compose.yml exists)
         dir("${env.WORKSPACE}") {
           sh './deploy.sh'
         }
       }
     }
   }
-
   triggers {
     githubPush()
   }
