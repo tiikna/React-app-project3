@@ -1,28 +1,43 @@
 pipeline {
   agent any
 
+  environment {
+    // Inject DockerHub credentials
+    DOCKER_HUB_CREDENTIALS = credentials('dockerhub-username-id')
+  }
+
   stages {
     stage('Checkout') {
       steps {
         checkout scm
       }
     }
+
     stage('Prepare Scripts') {
       steps {
         sh 'chmod +x build.sh deploy.sh'
       }
     }
+
     stage('Build & Push Docker Image') {
       steps {
         withCredentials([usernamePassword(credentialsId: 'dockerhub-username-id', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
-          sh './build.sh'
+          script {
+            // Pass BRANCH_NAME environment variable explicitly to build.sh
+            sh """
+              export BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
+              ./build.sh
+            """
+          }
         }
       }
     }
 
     stage('Deploy Application') {
       steps {
-        sh './deploy.sh'
+        dir("${env.WORKSPACE}") {  // ensure working dir is repo root where docker-compose.yml exists
+          sh './deploy.sh'
+        }
       }
     }
   }
