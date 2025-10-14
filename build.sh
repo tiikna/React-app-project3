@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
+BRANCH_NAME=${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}
 if [ "$BRANCH" == "dev" ]; then
   docker build -t mishraankit062/reactapp3-dev:latest .
   docker push mishraankit062/reactapp3-dev:latest
