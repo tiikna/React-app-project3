@@ -1,5 +1,8 @@
 pipeline {
   agent any
+  tools {
+    nodejs 'Node18' 
+  }
   stages {
     stage('Checkout') {
       steps {
@@ -17,14 +20,16 @@ pipeline {
         sh 'npm run build'
       }
     }
-
     stage('Build & Push Docker Image') {
       steps {
-        script {
-          sh """
-            export BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
-            ./build.sh
-          """
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-username-id', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
+          script {
+            sh """
+              export BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
+              ./build.sh
+            """
+          }
         }
       }
     }
