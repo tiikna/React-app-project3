@@ -11,25 +11,26 @@ pipeline {
     }
     stage('Prepare Scripts') {
       steps {
-        sh 'chmod +x build.sh deploy.sh'
+        // Windows does not require chmod, so you can omit this or convert to appropriate command if needed
+        echo 'Prepare Scripts stage skipped chmod on Windows'
       }
     }
     stage('Install and Build React App') {
-  steps {
-    dir('React-app-3') { 
-      sh 'npm install'
-      sh 'npm run build'
+      steps {
+        dir('React-app-3') { 
+          bat 'npm install'
+          bat 'npm run build'
+        }
+      }
     }
-  }
-}
     stage('Build & Push Docker Image') {
       steps {
         withCredentials([usernamePassword(
           credentialsId: 'dockerhub-username-id', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
           script {
-            sh """
-              export BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
-              ./build.sh
+            bat """
+              set BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
+              call build.sh
             """
           }
         }
@@ -38,7 +39,7 @@ pipeline {
     stage('Deploy Application') {
       steps {
         dir("${env.WORKSPACE}") {
-          sh './deploy.sh'
+          bat 'call deploy.sh'
         }
       }
     }
