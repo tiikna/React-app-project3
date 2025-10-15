@@ -1,7 +1,7 @@
 pipeline {
   agent any
   tools {
-    nodejs 'Node18' 
+    nodejs 'Node18'  // Ensure this matches your Jenkins NodeJS tool name exactly
   }
   stages {
     stage('Checkout') {
@@ -11,16 +11,14 @@ pipeline {
     }
     stage('Prepare Scripts') {
       steps {
-        // Windows does not require chmod, so you can omit this or convert to appropriate command if needed
         echo 'Prepare Scripts stage skipped chmod on Windows'
       }
     }
     stage('Install and Build React App') {
       steps {
-        dir('build') { 
-          bat 'npm install'
-          bat 'npm run build'
-        }
+        // npm commands run from root since package.json is at root
+        bat 'npm install'
+        bat 'npm run build'
       }
     }
     stage('Build & Push Docker Image') {
@@ -28,9 +26,10 @@ pipeline {
         withCredentials([usernamePassword(
           credentialsId: 'dockerhub-username-id', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
           script {
+            // Pass env vars for branch and docker credentials to build script
             bat """
               set BRANCH_NAME=${env.BRANCH_NAME ?: 'dev'}
-              call build.sh
+              call build.bat
             """
           }
         }
@@ -39,7 +38,7 @@ pipeline {
     stage('Deploy Application') {
       steps {
         dir("${env.WORKSPACE}") {
-          bat 'call deploy.sh'
+          bat 'call deploy.bat'
         }
       }
     }
