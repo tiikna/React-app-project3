@@ -17,7 +17,7 @@ pipeline {
     }
     stage('Install and Build React App') {
       steps {
-        dir('React-app-3') { 
+        dir('build') { 
           bat 'npm install'
           bat 'npm run build'
         }
