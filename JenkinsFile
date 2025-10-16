@@ -11,7 +11,10 @@ pipeline {
     }
     stage('Prepare Scripts') {
       steps {
-        sh 'chmod +x *.sh || true'
+        sh 'dos2unix build.sh deploy.sh || true'
+        
+        // Make scripts executable
+        sh 'chmod +x build.sh deploy.sh'
       }
     }
     stage('Install and Build React App') {
@@ -23,7 +26,10 @@ pipeline {
     stage('Build & Push Docker Image') {
       steps {
         withCredentials([usernamePassword(
-          credentialsId: 'dockerhub-username-id', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
+          credentialsId: 'dockerhub-username-id',
+          usernameVariable: 'DOCKER_HUB_USERNAME',
+          passwordVariable: 'DOCKER_HUB_PASSWORD'
+        )]) {
           script {
             sh '''
               export BRANCH_NAME="${BRANCH_NAME:-dev}"
