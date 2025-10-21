@@ -11,7 +11,7 @@ pipeline {
     }
     stage('Prepare Scripts') {
       steps {
-        sh 'dos2unix build.sh deploy.sh || true'
+        // sh 'dos2unix build.sh deploy.sh || true'
         
         // Make scripts executable
         sh 'chmod +x build.sh deploy.sh'
