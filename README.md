@@ -31,8 +31,10 @@ These are the required files for the project:
 ├── build.sh
 ├── deploy.sh
 ├── Jenkinsfile
-└── devops-build/
-    └── nginx.conf
+└── public/
+    └── index.html
+└── src/
+    └── index.JS
 ```
 ## Step 1: Clone the Repository
 
@@ -357,6 +359,3 @@ Access the monitoring UI at `http://your-ec2-ip:19999`. Configure a monitor for 
 
 
 ---
-
-This will guide you smoothly through the project from cloning to production deployment.
-
