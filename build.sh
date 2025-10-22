@@ -19,7 +19,6 @@ fi
 
 echo "Logging into Docker Hub..."
 echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
-
 # Build and push based on branch
 if [ "$BRANCH_NAME" = "dev" ]; then
   docker build -t "$DOCKER_HUB_USERNAME/reactapp3-dev:latest" .
