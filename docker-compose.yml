@@ -3,5 +3,5 @@ services:
   web:
     image: ${DOCKER_IMAGE}
     ports:
-      - "8080:80"
+      - "8081:80"
     restart: unless-stopped
