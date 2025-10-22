@@ -48,7 +48,7 @@ Create and verify the following files:
 
 ```Dockerfile
 FROM nginx:alpine
-COPY build/ /usr/share/nginx/html
+COPY . /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1/ || exit 1
 CMD ["nginx", "-g", "daemon off;"]
@@ -99,26 +99,39 @@ services:
 
 ```bash
 #!/bin/bash
-# build.sh - Build and push Docker image based on Git branch
+set -e
+DOCKER_HUB_USERNAME="${DOCKER_HUB_USERNAME}"
+DOCKER_HUB_PASSWORD="${DOCKER_HUB_PASSWORD}"
 
-# Login to Docker Hub securely using environment variables
-echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
-BRANCH_NAME=${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}
-IMAGE_NAME="yourdockerhubusername/devops-build"  # Replace with your DockerHub username and repo
+# Set branch name or default to 'dev'
+BRANCH_NAME="${BRANCH_NAME:-dev}"
 
-if [ "$BRANCH" == "dev" ]; then
-  # Build dev tag image
-  docker build -t ${IMAGE_NAME}:dev .
-  # Push to DockerHub dev repo
-  docker push ${IMAGE_NAME}:dev
-elif [ "$BRANCH" == "master" ]; then
-  # Build prod tag image
-  docker build -t ${IMAGE_NAME}:prod .
-  # Push to DockerHub prod repo
-  docker push ${IMAGE_NAME}:prod
-else
-  echo "Branch $BRANCH is not configured for image push."
+# Check for missing credentials
+if [ -z "$DOCKER_HUB_USERNAME" ]; then
+  echo "Docker Hub username missing."
+  exit 1
 fi
+
+if [ -z "$DOCKER_HUB_PASSWORD" ]; then
+  echo "Docker Hub password missing."
+  exit 1
+fi
+
+echo "Logging into Docker Hub..."
+echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+
+# Build and push based on branch
+if [ "$BRANCH_NAME" = "dev" ]; then
+  docker build -t "$DOCKER_HUB_USERNAME/reactapp3-dev:latest" .
+  docker push "$DOCKER_HUB_USERNAME/reactapp3-dev:latest"
+elif [ "$BRANCH_NAME" = "main" ]; then
+  docker build -t "$DOCKER_HUB_USERNAME/reactapp3-prod:latest" .
+  docker push "$DOCKER_HUB_USERNAME/reactapp3-prod:latest"
+else
+  echo "Branch \"$BRANCH_NAME\" is not configured for Docker push."
+  exit 1
+fi
+echo "Docker build and push complete!"
 ```
 
 > **IMPORTANT:**
@@ -130,7 +143,16 @@ fi
 
 ```bash
 #!/bin/bash
-# deploy.sh - Deploy the Docker Compose application
+set -e
+
+# Default to dev
+BRANCH_NAME="${BRANCH_NAME:-dev}"
+
+if [ "$BRANCH_NAME" = "master" ]; then
+  export DOCKER_IMAGE="yourdockerhubusername/reactapp3-prod:latest"
+else
+  export DOCKER_IMAGE="yourdockerhubusername/reactapp3-dev:latest"
+fi
 
 docker-compose down
 docker-compose up -d --build
@@ -184,55 +206,68 @@ Jenkins automates build → push → deploy whenever we push code to GitHub.
 2. Install these plugins:
    - Docker Pipeline
    - GitHub Integration Plugin
-   - Pipeline
 
 ### Part B: Add Credentials
 1. Go to **Manage Jenkins → Credentials → Global Credentials**.
 2. Add:
    - ID: `dockerhub-username` → Docker Hub username
    - ID: `dockerhub-password` → Docker Hub password/token
-   - ID: `ec2-host-ip` → Secret text containing EC2 Public IP
 
 ### Part C: Connect GitHub Repo
-1. Create a new Jenkins item → **Pipeline project**.
-2. Under Pipeline definition → choose *Pipeline script from SCM*.
-3. SCM: Git → enter your GitHub repo URL.
-4. Branches: `*/dev` and `*/master`.
+1. From Jenkins Dashboard, click **New Item**.  Enter a name for your pipeline job.  Select **Multi-branch Pipeline** and click **OK**.
+2. In the **Branch Sources** section, click **Add Source** and select your repository provider (e.g., Git, GitHub).  
+3. Ensure your repository contains a `Jenkinsfile` at the root or configured path for each branch.  
+4. Click **Save**.
+5. Jenkins will scan the repository, discover branches, and start building the pipelines.
 
 👉 Now Jenkins will auto-trigger on each `git push`.
 3. **Add a pipeline job** with this Jenkinsfile in your repo:
 ```groovy
 pipeline {
   agent any
-
-  environment {
-    DOCKERHUB_CREDENTIALS = credentials('dockerhub-id')  // Replace with your Jenkins credential ID
+  tools {
+    nodejs 'Node18'
   }
-
   stages {
     stage('Checkout') {
       steps {
         checkout scm
       }
     }
-
-    stage('Build & Push Docker Image') {
+    stage('Prepare Scripts') {
       steps {
-        // Run build.sh which handles docker login, build, and push
-        sh './build.sh'
+        sh 'chmod +x build.sh deploy.sh'
       }
     }
-
+    stage('Install and Build React App') {
+      steps {
+        sh 'npm install'
+        sh 'npm run build'
+      }
+    }
+    stage('Build & Push Docker Image') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-username-id',usernameVariable: 'DOCKER_HUB_USERNAME',passwordVariable: 'DOCKER_HUB_PASSWORD'
+        )]) {
+          script {
+            sh '''
+              export BRANCH_NAME="${BRANCH_NAME:-dev}"
+              ./build.sh
+            '''
+          }
+        }
+      }
+    }
     stage('Deploy Application') {
       steps {
-        // Deploy with docker-compose
-        sh './deploy.sh'
+        dir("${env.WORKSPACE}") {
+          sh './deploy.sh'
+        }
       }
     }
   }
-
   triggers {
-    githubPush()  // Auto-trigger pipeline on GitHub push
+    githubPush()
   }
 }
 ```
@@ -283,13 +318,17 @@ cd devops-build
 
 ## Step 9: Monitoring Setup (Optional but Recommended)
 
-Install an open-source monitoring tool like Uptime Kuma using Docker:
+Install an open-source monitoring tool like Netdata:
 
 ```bash
-docker run -d --restart=always -p 3001:3001 --name uptime-kuma louislam/uptime-kuma
+sudo apt update && sudo apt upgrade -y
+sudo apt install curl -y
+bash <(curl -Ss https://my-netdata.io/kickstart.sh)
+sudo systemctl status netdata
+Add a rule to allow TCP traffic on port 19999.
 ```
 
-Access the monitoring UI at `http://your-ec2-ip:3001`. Configure a monitor for your app URL and notifications (Slack/Email) to alert if the app goes down.
+Access the monitoring UI at `http://your-ec2-ip:19999`. Configure a monitor for your app URL and notifications (Slack/Email) to alert if the app goes down.
 
 ***
 
