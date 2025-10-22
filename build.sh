@@ -23,7 +23,7 @@ echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-
 if [ "$BRANCH_NAME" = "dev" ]; then
   docker build -t "$DOCKER_HUB_USERNAME/reactapp3-dev:latest" .
   docker push "$DOCKER_HUB_USERNAME/reactapp3-dev:latest"
-elif [ "$BRANCH_NAME" = "master" ]; then
+elif [ "$BRANCH_NAME" = "main" ]; then
   docker build -t "$DOCKER_HUB_USERNAME/reactapp3-prod:latest" .
   docker push "$DOCKER_HUB_USERNAME/reactapp3-prod:latest"
 else
